@@ -768,7 +768,7 @@ document.getElementById('itemMask').addEventListener('click',e=>{ if(e.target.id
 
 // ============ 自動同期（合言葉なし・URLを知っている人で共有）============
 let syncTimer=null, syncing=false;
-function scheduleSync(){ if(!sync.url) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>doSync(false),1200); }
+function scheduleSync(){ if(!sync.url) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>doSync(false),250); }
 async function doSync(initial){
   if(!sync.url||syncing) return false;
   syncing=true; updateSyncStatus('同期中…');
@@ -824,7 +824,8 @@ function tick(){
 // 自動共有：合言葉なしで全員が同じ部屋を共有。初回/旧バージョンからは全件アップして同期し直す
 if(sync.v!==2){ sync={url:DEFAULT_SYNC_URL, since:0, last:0, v:2}; data.forEach(d=>d._dirty=true); cfgDirty=true; if(profile.name||profile.birth){ profileDirty=true; if(!profileUpdated){ profileUpdated=Date.now(); } } saveSync(); }
 renderProfile(); renderAll(); setInterval(tick,30000); updateSyncStatus();
-doSync(false); setInterval(()=>{ if(!document.hidden) doSync(false); }, 20000); window.addEventListener('focus',()=>doSync(false));
+doSync(false); setInterval(()=>{ if(!document.hidden) doSync(false); }, 7000); window.addEventListener('focus',()=>doSync(false));
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) doSync(false); });
 </script>
 </body>
 </html>
