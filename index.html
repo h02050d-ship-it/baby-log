@@ -236,6 +236,7 @@ const ML_BASE=[20,40,60,80,100,120,140,160,180,200,220,240,260,280,300];
 const TIME_OPTS=[['0','今'],['5','5分前'],['10','10分前'],['15','15分前'],['20','20分前'],['30','30分前'],['45','45分前'],['60','1時間前'],['90','1時間半前'],['120','2時間前'],['180','3時間前'],['manual','日時を指定…']];
 
 const SYNC_KEY='baby_tracker_sync_v1';
+const DEFAULT_SYNC_URL='https://script.google.com/macros/s/AKfycbyIwhBPGpfCWRiTnhpaXYDIlpGD3WAzHLOEIz94iS5eKbvB4KvtJWlamtW-K7OoWCdKJQ/exec';
 let data=loadJSON(REC_KEY,[]);
 let cfg=loadJSON(CFG_KEY,null)||DEFAULT_CFG.map(x=>({...x}));
 let cfgUpdated=loadJSON('baby_tracker_cfg_updated',0)||0;
@@ -609,7 +610,7 @@ document.getElementById('syncMask').addEventListener('click',e=>{ if(e.target.id
 // ============ 共有・同期 ============
 document.getElementById('syncBtn').addEventListener('click',openSync);
 function openSync(){
-  document.getElementById('s_url').value=sync.url||'';
+  document.getElementById('s_url').value=sync.url||DEFAULT_SYNC_URL;
   document.getElementById('s_pass').value=sync.pass||'';
   document.getElementById('s_msg').textContent='';
   document.getElementById('s_off').style.display = sync.url?'block':'none';
