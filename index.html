@@ -425,8 +425,10 @@ function goToday(){ selDate=startOfDay(Date.now()); renderDateBar(); renderTimer
 document.getElementById('dPrev').addEventListener('click',()=>shiftDay(-1));
 document.getElementById('dNext').addEventListener('click',()=>shiftDay(1));
 
-// ---- 赤ちゃんプロフィール ----
+// ---- 赤ちゃんプロフィール（サーバー同期する）----
 let profile = loadJSON('baby_tracker_profile', {name:'', birth:''});
+let profileUpdated = loadJSON('baby_tracker_profile_updated', 0) || 0;
+let profileDirty = false;
 function calcAge(birth){
   if(!birth) return '';
   const b=new Date(birth+'T00:00:00'), n=new Date();
@@ -451,8 +453,10 @@ function closeProfile(){ document.getElementById('profMask').classList.remove('o
 function saveProfile(){
   profile.name=document.getElementById('p_name_in').value.trim();
   profile.birth=document.getElementById('p_birth_in').value;
+  profileUpdated=Date.now(); profileDirty=true;
   localStorage.setItem('baby_tracker_profile', JSON.stringify(profile));
-  renderProfile(); closeProfile();
+  localStorage.setItem('baby_tracker_profile_updated', JSON.stringify(profileUpdated));
+  renderProfile(); closeProfile(); scheduleSync();
 }
 document.getElementById('profMask').addEventListener('click',e=>{ if(e.target.id=='profMask') closeProfile(); });
 
@@ -771,6 +775,7 @@ async function doSync(initial){
   try{
     const out=data.filter(d=>d._dirty).map(stripRec);
     if(cfgDirty){ out.push({ id:'__config__', type:'__config__', ts:0, amount:null, memo:JSON.stringify(cfg), tags:null, updated:cfgUpdated||Date.now(), deleted:false }); }
+    if(profileDirty){ out.push({ id:'__profile__', type:'__profile__', ts:0, amount:null, memo:JSON.stringify(profile), tags:null, updated:profileUpdated||Date.now(), deleted:false }); }
     const res=await fetch(sync.url,{ method:'POST', body: JSON.stringify({ since:sync.since||0, records:out }) });
     const j=await res.json();
     if(!j.ok){ updateSyncStatus('同期エラー'); syncing=false; return false; }
@@ -781,6 +786,10 @@ async function doSync(initial){
         if(!cfgDirty){ try{ cfg=JSON.parse(r.memo); cfgUpdated=Number(r.updated)||cfgUpdated; localStorage.setItem(CFG_KEY,JSON.stringify(cfg)); localStorage.setItem('baby_tracker_cfg_updated',JSON.stringify(cfgUpdated)); changed=true; }catch(_){} }
         continue;
       }
+      if(r.id=='__profile__'){
+        if(!profileDirty){ try{ const p=JSON.parse(r.memo); if(p&&typeof p==='object'){ profile=p; profileUpdated=Number(r.updated)||profileUpdated; localStorage.setItem('baby_tracker_profile',JSON.stringify(profile)); localStorage.setItem('baby_tracker_profile_updated',JSON.stringify(profileUpdated)); renderProfile(); } }catch(_){} }
+        continue;
+      }
       const idx=data.findIndex(x=>x.id==r.id);
       const rec={ id:r.id, type:r.type, ts:Number(r.ts), amount:r.amount===''||r.amount==null?null:Number(r.amount), memo:r.memo||'', tags:r.tags||null, updated:Number(r.updated)||0, deleted:!!r.deleted, _dirty:false };
       if(idx>=0) data[idx]=rec; else data.push(rec);
@@ -788,7 +797,7 @@ async function doSync(initial){
     }
     // 送信済みフラグを解除
     data.forEach(d=>{ d._dirty=false; });
-    cfgDirty=false;
+    cfgDirty=false; profileDirty=false;
     sync.since=Number(j.serverTime)||sync.since;
     sync.last=Date.now();
     saveRec(); saveSync();
@@ -813,7 +822,7 @@ function tick(){
   renderDateBar(); renderTimers();
 }
 // 自動共有：合言葉なしで全員が同じ部屋を共有。初回/旧バージョンからは全件アップして同期し直す
-if(sync.v!==2){ sync={url:DEFAULT_SYNC_URL, since:0, last:0, v:2}; data.forEach(d=>d._dirty=true); cfgDirty=true; saveSync(); }
+if(sync.v!==2){ sync={url:DEFAULT_SYNC_URL, since:0, last:0, v:2}; data.forEach(d=>d._dirty=true); cfgDirty=true; if(profile.name||profile.birth){ profileDirty=true; if(!profileUpdated){ profileUpdated=Date.now(); } } saveSync(); }
 renderProfile(); renderAll(); setInterval(tick,30000); updateSyncStatus();
 doSync(false); setInterval(()=>{ if(!document.hidden) doSync(false); }, 20000); window.addEventListener('focus',()=>doSync(false));
 </script>
