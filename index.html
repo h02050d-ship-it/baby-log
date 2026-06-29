@@ -114,15 +114,43 @@
   .cancel{width:100%; padding:12px; border:none; background:none; color:var(--sub); font-size:14px; margin-top:6px; cursor:pointer;}
   .preview{display:flex; justify-content:center; margin-bottom:14px;}
   .preview .btn{width:140px;}
+
+  header .prof{cursor:pointer;}
+  header .pname{font-size:18px; font-weight:700; letter-spacing:.04em;}
+  header .page{font-size:12px; opacity:.92; margin-top:2px;}
+
+  .datebar{display:flex; align-items:center; justify-content:space-between; padding:10px 14px 2px; gap:8px;}
+  .navbtn{border:none; background:#fff; color:var(--pink); width:40px; height:40px; border-radius:12px; font-size:24px; line-height:1; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.06); flex:none;}
+  .datewrap{text-align:center; cursor:pointer; flex:1;}
+  .datelbl{font-size:16px; font-weight:700;}
+  .datesub{font-size:11px; color:var(--pink); margin-top:1px; height:14px;}
+
+  .summary{display:flex; gap:8px; padding:10px 14px 4px; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .scard{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:9px 11px; box-shadow:0 1px 5px rgba(0,0,0,.05); min-width:96px; flex:none;}
+  .scard .sh{display:flex; align-items:center; gap:5px; font-size:12px; color:var(--sub);}
+  .scard .sh .dot{width:9px; height:9px; border-radius:50%; flex:none;}
+  .scard .snum{font-size:17px; font-weight:700; margin-top:2px;}
+  .scard .ssub{font-size:10px; color:var(--sub); margin-top:1px; white-space:nowrap;}
 </style>
 </head>
 <body>
 <header>
-  <h1>🍼 育児記録</h1>
-  <div class="date" id="today"></div>
+  <div class="prof" id="prof" onclick="openProfile()">
+    <div class="pname" id="pName">🍼 育児記録</div>
+    <div class="page" id="pAge">タップで名前・誕生日を設定</div>
+  </div>
 </header>
 
-<div class="timers" id="timers"></div>
+<div class="datebar">
+  <button class="navbtn" id="dPrev">‹</button>
+  <div class="datewrap" onclick="goToday()">
+    <div class="datelbl" id="dLabel"></div>
+    <div class="datesub" id="dToday">今日に移動</div>
+  </div>
+  <button class="navbtn" id="dNext">›</button>
+</div>
+
+<div class="summary" id="timers"></div>
 
 <div class="pad" id="pad"></div>
 <div class="tools">
@@ -216,12 +244,30 @@
   </div>
 </div>
 
+<!-- プロフィール設定モーダル -->
+<div class="mask" id="profMask">
+  <div class="sheet">
+    <h3>👶 赤ちゃんの情報</h3>
+    <div class="field">
+      <label>名前</label>
+      <input id="p_name_in" maxlength="12" placeholder="例：栞音">
+    </div>
+    <div class="field">
+      <label>誕生日</label>
+      <input type="date" id="p_birth_in">
+    </div>
+    <button class="save" onclick="saveProfile()">保存</button>
+    <button class="cancel" onclick="closeProfile()">キャンセル</button>
+  </div>
+</div>
+
 <script>
 const REC_KEY='baby_tracker_v1';
 const CFG_KEY='baby_tracker_items_v1';
 const COLOR_NAME_MAP={'黄':'#f3d250','緑':'#7cc47c','茶':'#a0744b','赤':'#e8553e','黒':'#444','白':'#ffffff','オレンジ':'#f0ad4e','こげ茶':'#7a4a25'};
 const DEFAULT_CFG=[
-  {id:'milk', name:'ミルク',   icon:'🍼', color:'#5bc0de', amount:true,  memo:false},
+  {id:'milk', name:'ミルク',   icon:'🍼', color:'#5bc0de', amount:true,  memo:false,
+    tags:[{label:'中身', options:['ミルク','母乳']}]},
   {id:'food', name:'離乳食',   icon:'🍚', color:'#f0ad4e', amount:false, memo:true},
   {id:'poop', name:'うんち',   icon:'💩', color:'#a0744b', amount:false, memo:true, alsoPee:true,
     tags:[
@@ -284,17 +330,41 @@ function textColor(hex){
 function lastOf(id){ return live().filter(d=>d.type==id).sort((a,b)=>b.ts-a.ts)[0]; }
 function lastAmount(id){ const r=live().filter(d=>d.type==id&&d.amount).sort((a,b)=>b.ts-a.ts)[0]; return r?r.amount:null; }
 
-// ---- 経過時間カード ----
+// ---- 日付関連 ----
+let selDate = startOfDay(Date.now());
+function startOfDay(ts){ const d=new Date(ts); d.setHours(0,0,0,0); return d.getTime(); }
+function sameDay(a,b){ return startOfDay(a)===startOfDay(b); }
+function isToday(){ return selDate===startOfDay(Date.now()); }
+function dayRecords(){ return live().filter(d=>sameDay(d.ts, selDate)).sort((a,b)=>a.ts-b.ts); }
+
+function renderDateBar(){
+  const d=new Date(selDate); const w=['日','月','火','水','木','金','土'][d.getDay()];
+  document.getElementById('dLabel').textContent = isToday() ? `今日 ${d.getMonth()+1}/${d.getDate()}(${w})` : `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日(${w})`;
+  document.getElementById('dToday').style.visibility = isToday()?'hidden':'visible';
+  document.getElementById('dNext').style.visibility = isToday()?'hidden':'visible';
+}
+
+// ---- 上部サマリー（その日の回数・合計＋経過） ----
 function renderTimers(){
   const now=Date.now();
+  const recs=dayRecords();
   document.getElementById('timers').innerHTML = cfg.filter(c=>!c.hidden).map(c=>{
-    const last=lastOf(c.id);
-    const since=last?fmtSince(now-last.ts):'—';
-    const lastStr=last?('前回 '+fmtClock(last.ts)+(last.amount?(' / '+last.amount+'ml'):'')):'記録なし';
-    return `<div class="timer">
-      <div class="lbl"><span class="dot" style="background:${c.color}"></span>${escapeHtml(c.name)}</div>
-      <div class="since">${since}${last?'<span style="font-size:12px;font-weight:400;color:var(--sub)"> 経過</span>':''}</div>
-      <div class="last">${lastStr}</div></div>`;
+    const mine=recs.filter(r=>r.type==c.id);
+    const cnt=mine.length;
+    let total=0; mine.forEach(r=>{ if(r.amount) total+=r.amount; });
+    const totalStr = (c.amount && total>0) ? (' '+total+'ml') : '';
+    let sub='';
+    if(isToday()){
+      const last=lastOf(c.id);
+      sub = last ? ('前回 '+fmtClock(last.ts)+'・'+fmtSince(now-last.ts)) : '記録なし';
+    } else {
+      const lastToday = mine[mine.length-1];
+      sub = lastToday ? ('最後 '+fmtClock(lastToday.ts)) : '記録なし';
+    }
+    return `<div class="scard">
+      <div class="sh"><span class="dot" style="background:${c.color}"></span>${escapeHtml(c.name)}</div>
+      <div class="snum">${cnt}回<span style="font-size:11px;font-weight:600;color:var(--sub)">${totalStr}</span></div>
+      <div class="ssub">${sub}</div></div>`;
   }).join('');
 }
 
@@ -310,16 +380,13 @@ function renderPad(){
   p.innerHTML=html;
 }
 
-// ---- 履歴 ----
+// ---- その日の記録（時系列・昇順） ----
 function renderLog(){
   const el=document.getElementById('log');
-  const rows=live();
-  if(rows.length==0){ el.innerHTML='<div class="empty">まだ記録がありません。<br>下のボタンから記録してみましょう。</div>'; return; }
-  const sorted=[...rows].sort((a,b)=>b.ts-a.ts);
-  let html='', curDay=null;
-  for(const d of sorted){
-    const day=fmtDay(d.ts);
-    if(day!==curDay){ html+=`<div class="day">${day}</div>`; curDay=day; }
+  const rows=dayRecords();
+  if(rows.length==0){ el.innerHTML='<div class="empty">この日の記録はありません。<br>下のボタンから記録できます。</div>'; return; }
+  let html='';
+  for(const d of rows){
     const c=cfgOf(d.type);
     let parts=[];
     if(d.amount) parts.push(d.amount+'ml');
@@ -327,14 +394,51 @@ function renderLog(){
     if(d.memo) parts.push(escapeHtml(d.memo));
     const sub=parts.join(' / ');
     html+=`<div class="item">
+      <div class="time" style="margin-right:2px">${fmtClock(d.ts)}</div>
       <div class="ic">${c.icon}</div>
       <div class="main" onclick="editRecord('${d.id}')"><div class="t1">${escapeHtml(c.name)}</div>${sub?`<div class="t2">${sub}</div>`:''}</div>
-      <div class="time" onclick="editRecord('${d.id}')">${fmtClock(d.ts)}</div>
       <button class="del" onclick="delRecord('${d.id}')">×</button></div>`;
   }
   el.innerHTML=html;
 }
-function renderAll(){ renderTimers(); renderPad(); renderLog(); }
+function renderAll(){ renderDateBar(); renderTimers(); renderPad(); renderLog(); }
+
+// ---- 日付ナビ ----
+function shiftDay(n){ const d=new Date(selDate); d.setDate(d.getDate()+n); selDate=startOfDay(d.getTime()); renderDateBar(); renderTimers(); renderLog(); }
+function goToday(){ selDate=startOfDay(Date.now()); renderDateBar(); renderTimers(); renderLog(); }
+document.getElementById('dPrev').addEventListener('click',()=>shiftDay(-1));
+document.getElementById('dNext').addEventListener('click',()=>shiftDay(1));
+
+// ---- 赤ちゃんプロフィール ----
+let profile = loadJSON('baby_tracker_profile', {name:'', birth:''});
+function calcAge(birth){
+  if(!birth) return '';
+  const b=new Date(birth+'T00:00:00'), n=new Date();
+  if(isNaN(b)) return '';
+  let months=(n.getFullYear()-b.getFullYear())*12 + (n.getMonth()-b.getMonth());
+  let days=n.getDate()-b.getDate();
+  if(days<0){ months--; const pm=new Date(n.getFullYear(),n.getMonth(),0).getDate(); days+=pm; }
+  const years=Math.floor(months/12); months=months%12;
+  return `${years}歳${months}ヶ月${days}日`;
+}
+function renderProfile(){
+  document.getElementById('pName').textContent = profile.name ? ('🍼 '+profile.name) : '🍼 育児記録';
+  const age=calcAge(profile.birth);
+  document.getElementById('pAge').textContent = age || 'タップで名前・誕生日を設定';
+}
+function openProfile(){
+  document.getElementById('p_name_in').value=profile.name||'';
+  document.getElementById('p_birth_in').value=profile.birth||'';
+  document.getElementById('profMask').classList.add('on');
+}
+function closeProfile(){ document.getElementById('profMask').classList.remove('on'); }
+function saveProfile(){
+  profile.name=document.getElementById('p_name_in').value.trim();
+  profile.birth=document.getElementById('p_birth_in').value;
+  localStorage.setItem('baby_tracker_profile', JSON.stringify(profile));
+  renderProfile(); closeProfile();
+}
+document.getElementById('profMask').addEventListener('click',e=>{ if(e.target.id=='profMask') closeProfile(); });
 
 // ============ 記録モーダル ============
 function localDT(ts){ const d=new Date(ts); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16); }
@@ -360,10 +464,18 @@ function openRecord(id){
   const c=cfgOf(id);
   document.getElementById('recTitle').textContent=c.icon+' '+c.name+'を記録';
   const lm=document.getElementById('lastMilkLine');
-  const t=lastMilkText(); lm.style.display=t?'block':'none'; lm.textContent=t;
-  buildWhen('0');
-  document.getElementById('f_time').style.display='none';
-  document.getElementById('f_time').value=localDT(Date.now());
+  const t=lastMilkText(); lm.style.display=(t&&isToday())?'block':'none'; lm.textContent=t;
+  if(isToday()){
+    buildWhen('0');
+    document.getElementById('f_time').style.display='none';
+    document.getElementById('f_time').value=localDT(Date.now());
+  } else {
+    // 過去の日を見ているときは、その日付に記録
+    buildWhen('manual');
+    const now=new Date(); const dt=new Date(selDate); dt.setHours(now.getHours(),now.getMinutes(),0,0);
+    document.getElementById('f_time').style.display='block';
+    document.getElementById('f_time').value=localDT(dt.getTime());
+  }
   setupRecFields(c, {});
   document.getElementById('recMask').classList.add('on');
 }
@@ -681,11 +793,11 @@ function updateSyncStatus(tmp){
 
 // ---- 起動 ----
 function tick(){
-  const d=new Date(); const w=['日','月','火','水','木','金','土'][d.getDay()];
-  document.getElementById('today').textContent=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日(${w}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  renderTimers();
+  // 日付が変わっていたら（今日表示中なら）選択日を更新
+  if(isToday() && selDate!==startOfDay(Date.now())){ selDate=startOfDay(Date.now()); }
+  renderDateBar(); renderTimers();
 }
-renderAll(); tick(); setInterval(tick,30000); updateSyncStatus();
+renderProfile(); renderAll(); setInterval(tick,30000); updateSyncStatus();
 if(sync.url){ doSync(false); setInterval(()=>{ if(!document.hidden) doSync(false); }, 20000); window.addEventListener('focus',()=>doSync(false)); }
 </script>
 </body>
