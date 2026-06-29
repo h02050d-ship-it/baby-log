@@ -28,17 +28,12 @@
   header{
     flex:none;
     background:linear-gradient(135deg,#ff9eb5,#ffb6a3);
-    color:#fff; padding:14px 14px 12px;
+    color:#fff; padding:14px 14px 12px; text-align:center;
     box-shadow:0 2px 10px rgba(255,158,181,.35);
-    display:flex; align-items:center; gap:10px;
   }
-  .hleft{flex:1; min-width:0; cursor:pointer;}
-  .hright{flex:none; display:flex; gap:8px;}
-  .hbtn{width:40px; height:40px; border-radius:13px; border:none; background:rgba(255,255,255,.22); color:#fff; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform .12s, background .15s;}
-  .hbtn:active{transform:scale(.9);}
-  .hbtn.on{background:#fff; color:var(--pink);}
-  header h1{margin:0; font-size:19px; letter-spacing:.05em;}
-  header .date{font-size:12px; opacity:.92; margin-top:3px;}
+  .hcenter{cursor:pointer;}
+  .hcenter .pname{font-size:18px; font-weight:700;}
+  .hcenter .page{font-size:13px; opacity:.96; margin-top:2px;}
 
   .timers{display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:14px 14px 4px;}
   .timer{
@@ -115,6 +110,9 @@
   select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%23bbb' stroke-width='2' fill='none'/></svg>"); background-repeat:no-repeat; background-position:right 14px center;}
   .field textarea{resize:none; height:60px;}
   .lastline{font-size:13px; color:var(--pink); background:#fff0f4; border-radius:10px; padding:9px 12px; margin-bottom:14px; text-align:center; font-weight:600;}
+  .dt3{display:flex; gap:8px;}
+  .dt3 select{flex:1; min-width:0; text-align:center; padding-left:8px;}
+  .dt3 select:first-child{flex:1.7;}
   .chips{display:flex; gap:8px; flex-wrap:wrap;}
   .chip{border:1.5px solid var(--line); background:#fffafc; border-radius:20px; padding:8px 12px; font-size:18px; cursor:pointer; line-height:1;}
   .chip.sel{outline:3px solid var(--pink); outline-offset:1px;}
@@ -157,13 +155,9 @@
 </head>
 <body>
 <header>
-  <div class="hleft" id="prof" onclick="openProfile()">
+  <div class="hcenter" id="prof" onclick="openProfile()">
     <div class="pname" id="pName">🍼 育児記録</div>
     <div class="page" id="pAge">タップで名前・誕生日を設定</div>
-  </div>
-  <div class="hright">
-    <button class="hbtn" id="editToggle" title="項目を編集・追加">✏️</button>
-    <button class="hbtn" id="syncBtn" title="夫婦で共有">🔗</button>
   </div>
 </header>
 
@@ -182,7 +176,7 @@
 
 <div class="bottom">
   <div class="hint" id="syncStatus" style="display:none;"></div>
-  <div class="hint" id="hint"></div>
+  <div class="hint" id="hint">長押しで並べ替え</div>
   <div class="pad" id="pad"></div>
 </div>
 
@@ -193,7 +187,11 @@
     <div class="lastline" id="lastMilkLine"></div>
     <div class="field">
       <label>日時</label>
-      <input type="datetime-local" id="f_time">
+      <div class="dt3">
+        <select id="f_date"></select>
+        <select id="f_hour"></select>
+        <select id="f_min"></select>
+      </div>
     </div>
     <div class="field" id="amountField" style="display:none;">
       <label>量（ml）</label>
@@ -206,7 +204,7 @@
       <label id="memoLabel">メモ</label>
       <textarea id="f_memo" placeholder=""></textarea>
     </div>
-    <button class="save" onclick="saveRecord()">記録する</button>
+    <button class="save" onclick="saveRecord()">保存</button>
     <button class="cancel" onclick="closeRec()">キャンセル</button>
   </div>
 </div>
@@ -244,29 +242,6 @@
   </div>
 </div>
 
-<!-- 共有設定モーダル -->
-<div class="mask" id="syncMask">
-  <div class="sheet">
-    <h3>🔗 夫婦で共有</h3>
-    <div style="font-size:13px;color:var(--sub);line-height:1.6;margin-bottom:14px;">
-      同じ<b>合言葉</b>を2人のスマホに入れると、記録が自動で同期されます。<br>
-      ※この画面のURLと合言葉は、外の人に教えないでください。
-    </div>
-    <div class="field">
-      <label>同期アドレス（URL）</label>
-      <input id="s_url" placeholder="https://script.google.com/macros/s/..../exec">
-    </div>
-    <div class="field">
-      <label>合言葉（夫婦で同じものを入力）</label>
-      <input id="s_pass" placeholder="例：わが家のあいことば">
-    </div>
-    <button class="save" onclick="connectSync()">つなぐ・同期する</button>
-    <div id="s_msg" style="text-align:center;font-size:13px;margin-top:12px;min-height:18px;"></div>
-    <button class="danger" id="s_off" style="display:none;" onclick="disconnectSync()">共有をやめる（この端末だけにする）</button>
-    <button class="cancel" onclick="closeSync()">閉じる</button>
-  </div>
-</div>
-
 <!-- プロフィール設定モーダル -->
 <div class="mask" id="profMask">
   <div class="sheet">
@@ -296,8 +271,7 @@ const DEFAULT_CFG=[
       {label:'色', options:['黄','緑','茶','赤','黒','白'], colors:COLOR_NAME_MAP},
       {label:'形状', options:['水っぽい','ゆるい','やわらかい','かたい']},
     ]},
-  {id:'milk', name:'ミルク',   icon:'bottle', color:'#7ec8d8', amount:true,  memo:false,
-    tags:[{label:'中身', options:['ミルク','母乳']}]},
+  {id:'milk', name:'ミルク',   icon:'bottle', color:'#7ec8d8', amount:true,  memo:false},
 ];
 // おしゃれな白線画アイコン（SVG）。1em表示で親のfont-size・色に追従
 const _S='width="1em" height="1em" viewBox="0 0 24 24" style="vertical-align:-.14em;display:inline-block"';
@@ -483,7 +457,23 @@ function saveProfile(){
 document.getElementById('profMask').addEventListener('click',e=>{ if(e.target.id=='profMask') closeProfile(); });
 
 // ============ 記録モーダル ============
-function localDT(ts){ const d=new Date(ts); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16); }
+// 日時を「日付・時・分」の3分割で選ぶ
+function buildDateTime(ts){
+  const d=new Date(ts);
+  const today=startOfDay(Date.now());
+  let dh='';
+  for(let i=-30;i<=2;i++){
+    const dd=new Date(today); dd.setDate(dd.getDate()+i); const t=dd.getTime();
+    const w=['日','月','火','水','木','金','土'][dd.getDay()];
+    let lb = i===0?'今日': i===-1?'昨日': i===1?'明日': (dd.getMonth()+1)+'月'+dd.getDate()+'日('+w+')';
+    dh+=`<option value="${t}" ${t===startOfDay(ts)?'selected':''}>${lb}</option>`;
+  }
+  document.getElementById('f_date').innerHTML=dh;
+  let hh=''; for(let h=0;h<24;h++) hh+=`<option value="${h}" ${h===d.getHours()?'selected':''}>${h}時</option>`;
+  document.getElementById('f_hour').innerHTML=hh;
+  let mm=''; for(let m=0;m<60;m++) mm+=`<option value="${m}" ${m===d.getMinutes()?'selected':''}>${m}分</option>`;
+  document.getElementById('f_min').innerHTML=mm;
+}
 
 function buildAmount(selected){
   const arr=[...ML_BASE];
@@ -507,7 +497,7 @@ function openRecord(id){
   // 既定は「今」。過去の日を見ているときはその日付＋現在時刻
   let def=Date.now();
   if(!isToday()){ const now=new Date(); const dt=new Date(selDate); dt.setHours(now.getHours(),now.getMinutes(),0,0); def=dt.getTime(); }
-  document.getElementById('f_time').value=localDT(def);
+  buildDateTime(def);
   setupRecFields(c, {});
   document.getElementById('recMask').classList.add('on');
 }
@@ -517,7 +507,7 @@ function editRecord(id){
   const c=cfgOf(d.type);
   document.getElementById('recTitle').innerHTML=iconHTML(c.icon)+' '+escapeHtml(c.name)+'を編集';
   const lm=document.getElementById('lastMilkLine'); lm.style.display='none';
-  document.getElementById('f_time').value=localDT(d.ts);
+  buildDateTime(d.ts);
   setupRecFields(c, d);
   document.getElementById('recMask').classList.add('on');
 }
@@ -569,8 +559,11 @@ document.getElementById('f_amount_sel').addEventListener('change',e=>{
   document.getElementById('f_amount_num').style.display = e.target.value=='other'?'block':'none';
 });
 function calcTs(){
-  const t=new Date(document.getElementById('f_time').value).getTime();
-  return isNaN(t)?null:t;
+  const day=parseInt(document.getElementById('f_date').value);
+  const h=parseInt(document.getElementById('f_hour').value);
+  const m=parseInt(document.getElementById('f_min').value);
+  if(isNaN(day)) return null;
+  return day + h*3600000 + m*60000;
 }
 function saveRecord(){
   const ts=calcTs();
@@ -765,60 +758,22 @@ function saveOrder(){
   cfg=[...visible,...hidden]; saveCfg(); renderTimers(); scheduleSync();
 }
 
-// ---- 編集モード切替 ----
-document.getElementById('editToggle').addEventListener('click',()=>{
-  editMode=!editMode;
-  const b=document.getElementById('editToggle');
-  b.classList.toggle('on',editMode);
-  b.textContent=editMode?'✓':'✏️';
-  padEl.classList.toggle('editing',editMode);
-  document.getElementById('hint').textContent=editMode?'タップで編集・削除／＋で追加／長押しで並べ替え':'';
-  renderPad();
-});
-
 // ---- マスク外タップで閉じる ----
 document.getElementById('recMask').addEventListener('click',e=>{ if(e.target.id=='recMask') closeRec(); });
 document.getElementById('itemMask').addEventListener('click',e=>{ if(e.target.id=='itemMask') closeItem(); });
-document.getElementById('syncMask').addEventListener('click',e=>{ if(e.target.id=='syncMask') closeSync(); });
 
-// ============ 共有・同期 ============
-document.getElementById('syncBtn').addEventListener('click',openSync);
-function openSync(){
-  document.getElementById('s_url').value=sync.url||DEFAULT_SYNC_URL;
-  document.getElementById('s_pass').value=sync.pass||'';
-  document.getElementById('s_msg').textContent='';
-  document.getElementById('s_off').style.display = sync.url?'block':'none';
-  document.getElementById('syncMask').classList.add('on');
-}
-function closeSync(){ document.getElementById('syncMask').classList.remove('on'); }
-async function connectSync(){
-  const url=document.getElementById('s_url').value.trim();
-  const pass=document.getElementById('s_pass').value.trim();
-  const msg=document.getElementById('s_msg');
-  if(!url||!pass){ msg.style.color='#e06'; msg.textContent='URLと合言葉を両方入れてください'; return; }
-  msg.style.color='var(--sub)'; msg.textContent='つないでいます…';
-  sync.url=url; sync.pass=pass; sync.since=0;
-  // すべての記録・設定を「未送信」にして一斉アップ
-  data.forEach(d=>d._dirty=true); cfgDirty=true;
-  const ok=await doSync(true);
-  if(ok){ msg.style.color='#2a8'; msg.textContent='✓ つながりました！自動で同期します'; saveSync(); updateSyncStatus(); document.getElementById('s_off').style.display='block'; }
-  else { msg.style.color='#e06'; msg.textContent='つながりませんでした。URL・合言葉・通信をご確認ください'; }
-}
-function disconnectSync(){
-  if(!confirm('共有をやめますか？\n（この端末の記録は残ります）')) return;
-  sync={url:'',pass:'',since:0,last:0}; saveSync(); updateSyncStatus(); closeSync();
-}
+// ============ 自動同期（合言葉なし・URLを知っている人で共有）============
 let syncTimer=null, syncing=false;
 function scheduleSync(){ if(!sync.url) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>doSync(false),1200); }
 async function doSync(initial){
-  if(!sync.url||!sync.pass||syncing) return false;
+  if(!sync.url||syncing) return false;
   syncing=true; updateSyncStatus('同期中…');
   try{
     const out=data.filter(d=>d._dirty).map(stripRec);
     if(cfgDirty){ out.push({ id:'__config__', type:'__config__', ts:0, amount:null, memo:JSON.stringify(cfg), tags:null, updated:cfgUpdated||Date.now(), deleted:false }); }
-    const res=await fetch(sync.url,{ method:'POST', body: JSON.stringify({ pass:sync.pass, since:sync.since||0, records:out }) });
+    const res=await fetch(sync.url,{ method:'POST', body: JSON.stringify({ since:sync.since||0, records:out }) });
     const j=await res.json();
-    if(!j.ok){ updateSyncStatus(j.error=='wrong-pass'?'合言葉が違います':'同期エラー'); syncing=false; return false; }
+    if(!j.ok){ updateSyncStatus('同期エラー'); syncing=false; return false; }
     // サーバーからの変更を取り込む
     let changed=false;
     for(const r of (j.records||[])){
@@ -845,13 +800,10 @@ async function doSync(initial){
 function stripRec(d){ return { id:d.id, type:d.type, ts:d.ts, amount:d.amount, memo:d.memo, tags:d.tags, updated:d.updated, deleted:!!d.deleted }; }
 function updateSyncStatus(tmp){
   const el=document.getElementById('syncStatus');
-  const btn=document.getElementById('syncBtn');
-  btn.textContent='🔗';
-  if(!sync.url){ el.style.display='none'; btn.classList.remove('on'); return; }
-  btn.classList.add('on');
+  if(!sync.url){ el.style.display='none'; return; }
   el.style.display='block';
   if(tmp){ el.textContent='🔄 '+tmp; return; }
-  el.textContent = sync.last ? ('✓ 最終同期 '+fmtClock(sync.last)) : '✓ 共有中';
+  el.textContent = sync.last ? ('☁︎ 同期済み '+fmtClock(sync.last)) : '☁︎ 共有オン';
 }
 
 // ---- 起動 ----
@@ -860,8 +812,10 @@ function tick(){
   if(isToday() && selDate!==startOfDay(Date.now())){ selDate=startOfDay(Date.now()); }
   renderDateBar(); renderTimers();
 }
+// 自動共有：合言葉なしで全員が同じ部屋を共有。初回/旧バージョンからは全件アップして同期し直す
+if(sync.v!==2){ sync={url:DEFAULT_SYNC_URL, since:0, last:0, v:2}; data.forEach(d=>d._dirty=true); cfgDirty=true; saveSync(); }
 renderProfile(); renderAll(); setInterval(tick,30000); updateSyncStatus();
-if(sync.url){ doSync(false); setInterval(()=>{ if(!document.hidden) doSync(false); }, 20000); window.addEventListener('focus',()=>doSync(false)); }
+doSync(false); setInterval(()=>{ if(!document.hidden) doSync(false); }, 20000); window.addEventListener('focus',()=>doSync(false));
 </script>
 </body>
 </html>
