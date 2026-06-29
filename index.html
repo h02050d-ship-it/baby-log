@@ -270,15 +270,15 @@ const REC_KEY='baby_tracker_v1';
 const CFG_KEY='baby_tracker_items_v1';
 const COLOR_NAME_MAP={'黄':'#f3d250','緑':'#7cc47c','茶':'#a0744b','赤':'#e8553e','黒':'#444','白':'#ffffff','オレンジ':'#f0ad4e','こげ茶':'#7a4a25'};
 const DEFAULT_CFG=[
-  {id:'milk', name:'ミルク',   icon:'bottle', color:'#7ec8d8', amount:true,  memo:false,
-    tags:[{label:'中身', options:['ミルク','母乳']}]},
+  {id:'pee',  name:'おしっこ', icon:'drop', color:'#86cfd6', amount:false, memo:true},
   {id:'food', name:'離乳食',   icon:'food', color:'#f4b870', amount:false, memo:true},
   {id:'poop', name:'うんち',   icon:'poop', color:'#b69172', amount:false, memo:true, alsoPee:true,
     tags:[
       {label:'色', options:['黄','緑','茶','赤','黒','白'], colors:COLOR_NAME_MAP},
       {label:'形状', options:['水っぽい','ゆるい','やわらかい','かたい']},
     ]},
-  {id:'pee',  name:'おしっこ', icon:'drop', color:'#86cfd6', amount:false, memo:true},
+  {id:'milk', name:'ミルク',   icon:'bottle', color:'#7ec8d8', amount:true,  memo:false,
+    tags:[{label:'中身', options:['ミルク','母乳']}]},
 ];
 // おしゃれな白線画アイコン（SVG）。1em表示で親のfont-size・色に追従
 const _S='width="1em" height="1em" viewBox="0 0 24 24" style="vertical-align:-.14em;display:inline-block"';
